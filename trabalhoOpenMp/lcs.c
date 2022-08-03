@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>       
 
 #ifndef max
 #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
@@ -87,8 +88,7 @@ int LCS(mtype ** scoreMatrix, int sizeA, int sizeB, char * seqA, char *seqB) {
 				scoreMatrix[i][j] = scoreMatrix[i - 1][j - 1] + 1;
 			} else {
 				/* else, pick the maximum value (score) from left and upper elements*/
-				scoreMatrix[i][j] =
-						max(scoreMatrix[i-1][j], scoreMatrix[i][j-1]);
+				scoreMatrix[i][j] =max(scoreMatrix[i-1][j], scoreMatrix[i][j-1]);
 			}
 		}
 	}
@@ -131,6 +131,9 @@ void freeScoreMatrix(mtype **scoreMatrix, int sizeB) {
 }
 
 int main(int argc, char ** argv) {
+	double time_spent = 0.0;
+    clock_t begin = clock();
+
 	// sequence pointers for both sequences
 	char *seqA, *seqB;
 
@@ -138,8 +141,8 @@ int main(int argc, char ** argv) {
 	int sizeA, sizeB;
 
 	//read both sequences
-	seqA = read_seq("fileA.in");
-	seqB = read_seq("fileB.in");
+	seqA = read_seq("./entradas/fileA.in");
+	seqB = read_seq("./entradas/fileB.in");
 
 	//find out sizes
 	sizeA = strlen(seqA);
@@ -163,6 +166,12 @@ int main(int argc, char ** argv) {
 	//print score
 	printf("\nScore: %d\n", score);
 
+ 	clock_t end = clock();
+    // calculate elapsed time by finding difference (end - begin) and
+    // dividing the difference by CLOCKS_PER_SEC to convert to seconds
+    time_spent += (double)(end - begin) / CLOCKS_PER_SEC;
+ 
+    printf("The elapsed time is %f seconds\n", time_spent);
 	//free score matrix
 	freeScoreMatrix(scoreMatrix, sizeB);
 
