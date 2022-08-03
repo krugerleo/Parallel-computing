@@ -57,7 +57,7 @@ void print_matrix(short **x, int row, int col)
 
 void calc_P_matrix_v1(short **P, char *b, int len_b, char *c, int len_c)
 {
-
+#pragma omp parallel for
     for (int i = 0; i < len_c; i++)
     {
         for (int j = 2; j < len_b + 1; j++)
