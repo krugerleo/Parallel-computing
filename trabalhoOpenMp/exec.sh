@@ -14,7 +14,7 @@ do
     ./parallel 12 -wh | tee -a ./resultados/result$now.txt >/dev/null
     echo "$y" >> ./resultados/result$now.txt
 done
-for z in `seq 2`
+for z in `seq 20`
 do
     ./parallel AB -wh | tee -a ./resultados/result$now.txt >/dev/null
     echo "$z" >> ./resultados/result$now.txt
