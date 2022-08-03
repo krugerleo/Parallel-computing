@@ -10,7 +10,6 @@
 
 typedef unsigned short mtype;
 
-
 // http://www.inf.ufsc.br/~bosco.sobral/ensino/ine5645/Conceitos_OpenMP.pdf
 // Eitas openmp
 /* Read sequence from a file to a char vector.
@@ -40,14 +39,14 @@ int get_index_of_character(char *str, char x, int len)
 mtype lcs_yang_v1(mtype **DP, mtype **P, char *A, char *B, char *C, int m, int n, int u)
 {
 	{
-		
+
 		for (int i = 1; i < m + 1; i++)
 		{
 			int c_i = get_index_of_character(C, A[i - 1], u);
 
-			#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
 			for (int j = 0; j < n + 1; j++)
-			{	
+			{
 				if (A[i - 1] == B[j - 1])
 				{
 					DP[i][j] = DP[i - 1][j - 1] + 1;
@@ -228,7 +227,6 @@ void freeScoreMatrix(mtype **scoreMatrix, int sizeB)
 
 int main(int argc, char **argv)
 {
-	double time_spent = 0.0;
 	if (argc <= 1)
 	{
 		printf("Error: No input files specified! Please specify the input files, and run again!\n");

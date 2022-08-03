@@ -36,7 +36,13 @@ int LCS(mtype ** scoreMatrix, int sizeA, int sizeB, char * seqA, char *seqB) {
 ```
 ## Estratégia de paralelização
 A partir da estrutura core do LCS foi possivel observar uma dependencia de dados que impossibilitava a paralelização do código, a partir do aritgo [An OpenMP-based tool for finding longest
-common subsequence in bioinformatics](https://bmcresnotes.biomedcentral.com/articles/10.1186/s13104-019-4256-6) que propóes soluções para esse problema, decidi por implementar  versão 1 proposta no texto onde para 
+common subsequence in bioinformatics](https://bmcresnotes.biomedcentral.com/articles/10.1186/s13104-019-4256-6) que propõe soluções sobre problema, decidi por implementar a versão 1 proposta no artigo, Yang et al propõe o 'Row‑wise independent algorithm' uma solução diferente das tradicionais anti-diagonal e bit-parallel e a escolha para o meu trabalho.
+O algoritmo consiste na modificação da equação tradicional do LCS dada por:
+[LCS algorithm](imagens/mathLCS.png)
+Por:
+[Row‑wise independent algorithm](imagens/mathRowWise.png)
+Onde k é o numero de passos necessarios para encontrar uma match como seqA[i] == seqB[j-k] ou j-k == 0, para isso é utilizada outra matriz on calculamos os valores de j-k para toda iteração i, dado por:
+[j minus k](imagens/mathJminusK.png)
 ## Historico 
 Após conhecimento sobre Algoritmo LCS (Longest Common Subsequence) é facil perceber uma dependencia de dados entre o elemento atual e anteriores para o funcionamento do algoritmo, logo a paralelização a seguir não demonstrou ganhos significativos de desempenho:
 ```C
