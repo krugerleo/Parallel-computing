@@ -1,0 +1,6 @@
+make --dry-run --always-make --keep-going --print-directory
+make: Entering directory '/home/kruger/Clones/Parallel-computing/trabalhoOpenMp'
+cc    -c -o parallel.o parallel.c
+gcc -o parallel parallel.o -O3 -fopenmp
+make: Leaving directory '/home/kruger/Clones/Parallel-computing/trabalhoOpenMp'
+ 

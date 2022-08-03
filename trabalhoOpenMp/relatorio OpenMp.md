@@ -35,6 +35,7 @@ int LCS(mtype ** scoreMatrix, int sizeA, int sizeB, char * seqA, char *seqB) {
 }
 ```
 ## Estratégia de paralelização
+A partir da estrutura core do LCS foi possivel observar uma dependencia de dados que impossibilitava a paralelização do código,
 ## Historico 
 Após conhecimento sobre Algoritmo LCS (Longest Common Subsequence) é facil perceber uma dependencia de dados entre o elemento atual e anteriores para o funcionamento do algoritmo, logo a paralelização a seguir não demonstrou ganhos significativos de desempenho:
 ```C
