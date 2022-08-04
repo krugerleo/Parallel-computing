@@ -19,3 +19,8 @@ do
     ./parallel AB -wh | tee -a ./resultados/result$now.txt >/dev/null
     echo "$z" >> ./resultados/result$now.txt
 done
+for z in `seq 30`
+do
+    ./parallel 34 -wh | tee -a ./resultados/result$now.txt >/dev/null
+    echo "$z" >> ./resultados/result$now.txt
+done
