@@ -44,7 +44,7 @@ mtype lcs_yang_v1(mtype **DP, mtype **P, char *A, char *B, char *C, int m, int n
 		{
 			int c_i = get_index_of_character(C, A[i - 1], u);
 
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static) num_threads(2)
 			for (int j = 0; j < n + 1; j++)
 			{
 				if (A[i - 1] == B[j - 1])
@@ -66,12 +66,12 @@ mtype lcs_yang_v1(mtype **DP, mtype **P, char *A, char *B, char *C, int m, int n
 }
 void calc_P_matrix_v1(mtype **P, char *b, int len_b, char *c, int len_c)
 {
-#pragma omp parallel for
+#pragma omp parallel for num_threads(2)
 	for (int i = 0; i < len_c; i++)
 	{
 		for (int j = 2; j < len_b + 1; j++)
 		{
-			if (b[j - 2] == c[i]) // j-2 as b we assume here that b has a empty character in the beginning
+			if (b[j - 2] == c[i])
 			{
 				P[i][j] = j - 1;
 			}
@@ -248,7 +248,7 @@ int main(int argc, char **argv)
 	{
 		seqA = read_seq("./entradas/fileC.in"); // rows
 		seqB = read_seq("./entradas/fileD.in"); // colunms
-		uniqAB = read_seq("entradas/uniqCD.in");
+		uniqAB = read_seq("entradas/uniqAB.in");
 	}
 	else if (!strcmp(argv[1], "12"))
 	{
