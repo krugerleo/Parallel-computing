@@ -13,7 +13,6 @@
 #include <time.h>
 #include "mpi.h"
 // macros
-#define ALPHABET_LENGTH 4
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
 // global variables
@@ -106,15 +105,6 @@ int lcs_yang_v1(short **DP, short *P, char *A, char *B, char *C, int m, int n, i
     MPI_Bcast(P, (u * (n + 1)), MPI_SHORT, 0, MPI_COMM_WORLD);
     for (int i = 1; i < m + 1; i++)
     {
-
-        // Broadcast the c_i  array to everybody
-        // MPI_Bcast(A_i, 1, MPI_CHAR, 0, MPI_COMM_WORLD);
-        // Broadcast the  whole B  array to everybody
-        // MPI_Bcast(B, len_b, MPI_CHAR, 0, MPI_COMM_WORLD);
-
-        // Scatter the char array A chunks by sending each process a particular chunk
-        // MPI_Scatter(A, chunk_size, MPI_CHAR,&scatter_receive_a,chunk_size,MPI_CHAR, 0, MPI_COMM_WORLD);
-
         int c_i = get_index_of_character(C, A[i - 1], u);
         // printf("c_i is %d for %c from %d\n",c_i,A[i-1],myrank);
         short dp_i_receive[chunk_size];
@@ -142,7 +132,7 @@ int lcs_yang_v1(short **DP, short *P, char *A, char *B, char *C, int m, int n, i
         // now gather all the calculated values of P matrix in process 0
         MPI_Allgather(dp_i_receive, chunk_size, MPI_SHORT, DP[i], chunk_size, MPI_SHORT, MPI_COMM_WORLD);
     }
-    return DP[m][n];
+    return DP[m - 1][n - 1];
 }
 
 int lcs(short **DP, char *A, char *B, int m, int n)
@@ -224,6 +214,8 @@ int main(int argc, char *argv[])
         printf("lcs is: %d\n", lcs(DP_Results, string_A, string_B, len_a, len_b));
         stop_time = MPI_Wtime();
         printf("time taken by normal algorithm is: %lf\n", stop_time - start_time);
+        // printf("DP results after normal lcs: \n");
+        // print_matrix(DP_Results,len_a+1,len_b+1);
     }
 
     // resetting DP to zero values
@@ -235,11 +227,20 @@ int main(int argc, char *argv[])
             DP_Results[k][l] = 0;
         }
     }
+    printf("\n");
 
     start_time_yang = MPI_Wtime(); // can use this function to grab a
                                    // timestamp (in seconds)
     calc_P_matrix_v1(P_Matrix, string_B, len_b, unique_chars_C, c_len, my_rank, chunk_size_p);
+    if (my_rank == 0)
+    {
+        //	printf("\nP matrix is: \n");
+        //	print_p_matrix(P_Matrix,c_len,len_b+1);
+    }
+    //   if(my_rank==0)
+    //	{
     res = lcs_yang_v1(DP_Results, P_Matrix, string_A, string_B, unique_chars_C, len_a, len_b, c_len, my_rank, chunk_size_dp);
+    //	}
     stop_time_yang = MPI_Wtime(); // can use this function to grab a
                                   // timestamp (in seconds)
     if (my_rank == 0)
@@ -249,8 +250,6 @@ int main(int argc, char *argv[])
         //	printf("DP results after yang: \n");
         //		print_matrix(DP_Results,len_a+1,len_b+1);
     }
-    // printf("lcs_yang_v1 is: %d\n",res);
-    // printf("time taken for lcs_yang_v1 is: %lf\n",stop_time_yang-start_time_yang);
 
     // deallocate pointers
     free(P_Matrix);
