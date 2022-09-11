@@ -10,8 +10,8 @@
 
 int get_index_of_character(char *str, char x, int len);
 void print_matrix(short **x, int row, int col);
-void calc_P_matrix_v1(short *P, char *b, int len_b, char *c, int len_c, int myrank, int chunk_size);
-int lcs_yang_v1(short **DP, short *P, char *A, char *B, char *C, int m, int n, int u, int myrank, int chunk_size);
+void calcPMatrix(short *P, char *b, int len_b, char *c, int len_c, int myrank, int chunk_size);
+int lcsMPI(short **DP, short *P, char *A, char *B, char *C, int m, int n, int u, int myrank, int chunk_size);
 int lcs(short **DP, char *A, char *B, int m, int n);
 
 int get_index_of_character(char *str, char x, int len)
@@ -26,13 +26,10 @@ int get_index_of_character(char *str, char x, int len)
     return -1; // not found the character x in str
 }
 
-void calc_P_matrix_v1(short *P, char *b, int len_b, char *c, int len_c, int myrank, int chunk_size)
+void calcPMatrix(short *P, char *b, int len_b, char *c, int len_c, int myrank, int chunk_size)
 {
     char bufferToReceiveAlphabet[chunk_size];
     short bufferToReceivePmatrix[chunk_size * (len_b + 1)];
-    if (myrank == 0)
-    {
-    }
     // Scatter the char array chunks by sending each process a particular chunk
     MPI_Scatter(c, chunk_size, MPI_CHAR, &bufferToReceiveAlphabet, chunk_size, MPI_CHAR, 0, MPI_COMM_WORLD);
     // Scatter the char array chunks by sending each process a particular chunk
@@ -59,7 +56,7 @@ void calc_P_matrix_v1(short *P, char *b, int len_b, char *c, int len_c, int myra
     MPI_Gather(bufferToReceivePmatrix, chunk_size * (len_b + 1), MPI_SHORT, P, chunk_size * (len_b + 1), MPI_SHORT, 0, MPI_COMM_WORLD);
 }
 
-int lcs_yang_v1(short **DP, short *P, char *A, char *B, char *C, int m, int n, int u, int myrank, int chunk_size)
+int lcsMPI(short **DP, short *P, char *A, char *B, char *C, int m, int n, int u, int myrank, int chunk_size)
 {
 
     MPI_Bcast(P, (u * (n + 1)), MPI_SHORT, 0, MPI_COMM_WORLD);
@@ -298,7 +295,6 @@ int main(int argc, char **argv)
         score = LCS(scoreMatrix, sizeA, sizeB, seqA, seqB);
         stop_time = MPI_Wtime();
 
-        printf("Size (fileB,fileA,uniqAB);Serial Score;Serial LCS Time;Parallel Score;Parallel LCS Time\n");
         // Print Iput Sizes
         printf("(%d,%d,%d);", sizeB, sizeA, sizeUniqAB);
         // Print Serial LCS Score
@@ -317,8 +313,8 @@ int main(int argc, char **argv)
 
     start_time = MPI_Wtime();
 
-    calc_P_matrix_v1(pMatrix, seqB, sizeB, uniqAB, sizeUniqAB, my_rank, chunk_size_p);
-    score = lcs_yang_v1(scoreMatrix, pMatrix, seqA, seqB, uniqAB, sizeA, sizeB, sizeUniqAB, my_rank, chunk_size_dp);
+    calcPMatrix(pMatrix, seqB, sizeB, uniqAB, sizeUniqAB, my_rank, chunk_size_p);
+    score = lcsMPI(scoreMatrix, pMatrix, seqA, seqB, uniqAB, sizeA, sizeB, sizeUniqAB, my_rank, chunk_size_dp);
 
     stop_time = MPI_Wtime();
 
@@ -328,6 +324,7 @@ int main(int argc, char **argv)
         printf("%d;", score);
         // Print Serial LCS Time
         printf("%lf;", stop_time - start_time);
+        printf("%d;", num_procs);
     }
 
     // free score matrix
