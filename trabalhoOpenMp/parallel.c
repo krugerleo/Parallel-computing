@@ -10,10 +10,6 @@
 
 typedef unsigned short mtype;
 
-// http://www.inf.ufsc.br/~bosco.sobral/ensino/ine5645/Conceitos_OpenMP.pdf
-// Eitas openmp
-/* Read sequence from a file to a char vector.
- Filename is passed as parameter */
 void print_matrix(mtype **x, int row, int col)
 {
 	for (int i = 0; i < row; i++)
@@ -227,9 +223,9 @@ void freeScoreMatrix(mtype **scoreMatrix, int sizeB)
 
 int main(int argc, char **argv)
 {
-	if (argc <= 1)
+	if (argc <= 3)
 	{
-		printf("Error: No input files specified! Please specify the input files, and run again!\n");
+		printf("Error: No input files specified! Please specify the input files, and run again!\n  Example: a.out fileA fileB alphabetAB");
 		return 0;
 	}
 	// sequence pointers for both sequences
@@ -238,35 +234,9 @@ int main(int argc, char **argv)
 	// sizes of both sequences
 	int sizeA, sizeB, sizeUniqAB;
 
-	if (!strcmp(argv[1], "AB"))
-	{
-		seqA = read_seq("./entradas/fileA.in"); // rows
-		seqB = read_seq("./entradas/fileB.in"); // colunms
-		uniqAB = read_seq("entradas/uniqAB.in");
-	}
-	else if (!strcmp(argv[1], "CD"))
-	{
-		seqA = read_seq("./entradas/fileC.in"); // rows
-		seqB = read_seq("./entradas/fileD.in"); // colunms
-		uniqAB = read_seq("entradas/uniqAB.in");
-	}
-	else if (!strcmp(argv[1], "12"))
-	{
-		seqA = read_seq("./entradas/file1.in"); // rows
-		seqB = read_seq("./entradas/file2.in"); // colunms
-		uniqAB = read_seq("entradas/uniqAB.in");
-	}
-	else if (!strcmp(argv[1], "34"))
-	{
-		seqA = read_seq("./entradas/file3.in"); // rows
-		seqB = read_seq("./entradas/file4.in"); // colunms
-		uniqAB = read_seq("entradas/uniqAB.in");
-	}
-	else
-	{
-		printf("Error: invalid parameter! Please specify the input files, and run again!\n");
-		return 0;
-	}
+	seqA = read_seq(argv[1]); // rows
+	seqB = read_seq(argv[2]); // colunms
+	uniqAB = read_seq(argv[3]);
 
 	// read both sequences
 

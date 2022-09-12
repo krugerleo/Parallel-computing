@@ -11,8 +11,8 @@
 int get_index_of_character(char *str, char x, int len);
 void print_matrix(short **x, int row, int col);
 void calcPMatrix(short *P, char *b, int len_b, char *c, int len_c, int myrank, int chunk_size);
-int lcsMPI(short **DP, short *P, char *A, char *B, char *C, int m, int n, int u, int myrank, int chunk_size);
-int lcs(short **DP, char *A, char *B, int m, int n);
+int lcsMPI(short **scoreMatrix, short *P, char *A, char *B, char *C, int m, int n, int u, int myrank, int chunk_size);
+int lcs(short **scoreMatrix, char *A, char *B, int m, int n);
 
 int get_index_of_character(char *str, char x, int len)
 {
@@ -56,7 +56,7 @@ void calcPMatrix(short *P, char *b, int len_b, char *c, int len_c, int myrank, i
     MPI_Gather(bufferToReceivePmatrix, chunk_size * (len_b + 1), MPI_SHORT, P, chunk_size * (len_b + 1), MPI_SHORT, 0, MPI_COMM_WORLD);
 }
 
-int lcsMPI(short **DP, short *P, char *A, char *B, char *C, int m, int n, int u, int myrank, int chunk_size)
+int lcsMPI(short **scoreMatrix, short *P, char *A, char *B, char *C, int m, int n, int u, int myrank, int chunk_size)
 {
 
     MPI_Bcast(P, (u * (n + 1)), MPI_SHORT, 0, MPI_COMM_WORLD);
@@ -64,9 +64,9 @@ int lcsMPI(short **DP, short *P, char *A, char *B, char *C, int m, int n, int u,
     {
         int c_i = get_index_of_character(C, A[i - 1], u);
         // printf("c_i is %d for %c from %d\n",c_i,A[i-1],myrank);
-        short dp_i_receive[chunk_size];
+        short scoreMatrix_i_receive[chunk_size];
         // Broadcast the  whole B  array to everybody
-        MPI_Scatter(DP[i], chunk_size, MPI_SHORT, &dp_i_receive, chunk_size, MPI_SHORT, 0, MPI_COMM_WORLD);
+        MPI_Scatter(scoreMatrix[i], chunk_size, MPI_SHORT, &scoreMatrix_i_receive, chunk_size, MPI_SHORT, 0, MPI_COMM_WORLD);
         int start_id = (myrank * chunk_size);
         int end_id = (myrank * chunk_size) + chunk_size;
         for (int j = start_id; j < end_id; j++) // if myrank=0 then j=start_id+1 else j=start_id
@@ -75,21 +75,21 @@ int lcsMPI(short **DP, short *P, char *A, char *B, char *C, int m, int n, int u,
                 j = j + 1;
             if (A[i - 1] == B[j - 1])
             {
-                dp_i_receive[j - start_id] = DP[i - 1][j - 1] + 1;
+                scoreMatrix_i_receive[j - start_id] = scoreMatrix[i - 1][j - 1] + 1;
             }
             else if (P[(c_i * (n + 1)) + j] == 0)
             {
-                dp_i_receive[j - start_id] = max(DP[i - 1][j], 0);
+                scoreMatrix_i_receive[j - start_id] = max(scoreMatrix[i - 1][j], 0);
             }
             else
             {
-                dp_i_receive[j - start_id] = max(DP[i - 1][j], DP[i - 1][P[(c_i * (n + 1)) + j] - 1] + 1);
+                scoreMatrix_i_receive[j - start_id] = max(scoreMatrix[i - 1][j], scoreMatrix[i - 1][P[(c_i * (n + 1)) + j] - 1] + 1);
             }
         }
         // now gather all the calculated values of P matrix in process 0
-        MPI_Allgather(dp_i_receive, chunk_size, MPI_SHORT, DP[i], chunk_size, MPI_SHORT, MPI_COMM_WORLD);
+        MPI_Allgather(scoreMatrix_i_receive, chunk_size, MPI_SHORT, scoreMatrix[i], chunk_size, MPI_SHORT, MPI_COMM_WORLD);
     }
-    return DP[m - 1][n - 1];
+    return scoreMatrix[m - 1][n - 1];
 }
 
 void print_matrix(short **x, int row, int col)
@@ -256,7 +256,7 @@ int main(int argc, char **argv)
     }
     int my_rank;
     int num_procs;
-    int chunk_size_p, chunk_size_dp; // chunk_size for P matrix and DP matrix
+    int chunk_size_p, chunk_size_scoreMatrix; // chunk_size for P matrix and scoreMatrix matrix
     short score;
 
     MPI_Init(&argc, &argv);
@@ -281,7 +281,7 @@ int main(int argc, char **argv)
     sizeUniqAB = strlen(uniqAB);
 
     chunk_size_p = (sizeUniqAB / num_procs);
-    chunk_size_dp = ((sizeB + 1) / num_procs);
+    chunk_size_scoreMatrix = ((sizeB + 1) / num_procs);
     // allocate LCS score matrix
     short **scoreMatrix = allocateScoreMatrix(sizeA, sizeB);
 
@@ -314,7 +314,7 @@ int main(int argc, char **argv)
     start_time = MPI_Wtime();
 
     calcPMatrix(pMatrix, seqB, sizeB, uniqAB, sizeUniqAB, my_rank, chunk_size_p);
-    score = lcsMPI(scoreMatrix, pMatrix, seqA, seqB, uniqAB, sizeA, sizeB, sizeUniqAB, my_rank, chunk_size_dp);
+    score = lcsMPI(scoreMatrix, pMatrix, seqA, seqB, uniqAB, sizeA, sizeB, sizeUniqAB, my_rank, chunk_size_scoreMatrix);
 
     stop_time = MPI_Wtime();
 
