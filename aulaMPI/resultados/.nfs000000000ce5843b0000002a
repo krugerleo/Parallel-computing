@@ -1,0 +1,2 @@
+Size (fileB,fileA,uniqAB);Serial Score;Serial LCS Time;Parallel Score;Parallel LCS Time;Execution
+(10000,10000,20);3803;2.701475;0;1871.700080;32;1
