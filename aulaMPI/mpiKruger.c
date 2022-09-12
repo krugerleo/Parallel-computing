@@ -54,14 +54,12 @@ void calcPMatrix(short *P, char *b, int len_b, char *c, int len_c, int myrank, i
     }
 
     // Juntar contrario do scatter
-    MPI_Gather(bufferToReceivePmatrix, chunk_size * (len_b + 1), MPI_SHORT, P, chunk_size * (len_b + 1), MPI_SHORT, 0, MPI_COMM_WORLD);
+    MPI_Allgather(bufferToReceivePmatrix, chunk_size * (len_b + 1), MPI_SHORT, P, chunk_size * (len_b + 1), MPI_SHORT, MPI_COMM_WORLD);
 }
 
 int lcsMPI(short **scoreMatrix, short *P, char *A, char *B, char *C, int m, int n, int u, int myrank, int chunk_size)
 {
 
-    MPI_Bcast(A, m, MPI_CHAR, 0, MPI_COMM_WORLD);
-    MPI_Bcast(P, (u * (n + 1)), MPI_SHORT, 0, MPI_COMM_WORLD);
     for (int i = 1; i < m + 1; i++)
     {
         int c_i = get_index_of_character(C, A[i - 1], u);

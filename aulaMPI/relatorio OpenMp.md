@@ -4,7 +4,7 @@ GRR20180130
 
 [github projeto](https://github.com/krugerleo/Parallel-computing)
 ## 1. Introdução
-Trabalho sobre a paralelização do Algoritmo LCS (Longest Common Subsequence) utilizando a biblioteca OpenMP, e a variação do método LCS em Row‑wise independent algorithm. O projeto completo com arquivos de entrada e script utilizado na execução dos resultados estão no github do projeto.
+Trabalho sobre a paralelização do Algoritmo LCS (Longest Common Subsequence) utilizando OpenMPI, e a variação do método LCS em Row‑wise independent algorithm. O projeto completo com arquivos de entrada e script utilizado na execução dos resultados estão no github do projeto.
 ## 2. Funcionamento Core LCS
 Algoritmo LCS (Longest Common Subsequence)
 Algoritmo utilizado para encontrar a maior subsequencia presente em duas sequencias (Strings), uma subsequencia é caracteriza como uma sequencia que aparece na mesma ordem relativa mas não necessariamente continua.
@@ -106,10 +106,10 @@ void calc_P_matrix_v1(mtype **P, char *b, int len_b, char *c, int len_c)
 | Flags de compilação  | -O3 -Wall -pedantic -pthread -fopenmp                                                                       |
 | Processador          | Intel(R) Core(TM) i3-9100F CPU @ 3.60GHz                                                                    |
 | Número de execuções  | 30                                                                                                          |
-| Metodologia          | Teste de escalabilidade forte                                                                               |
+| Metodologia          | Teste de escalabilidade                                                                                     |
 | Memoria RAM          | 16GB 3000MHZ                                                                                                |
 | Compilar             | gcc -O3 -Wall -pedantic -pthread -fopenmp parallel.c -o parallel                                            |
-| parametros           | Recebe como entrada valores 'AB' '12' 'CD' '34' que definem os arquivos utilizados na execução              |
+| parametros           | Recebe como entrada o caminho para Sequencia1, Sequencia2 e alphabeto presente                              |
 
 #### Arquitetura processador
 ```
