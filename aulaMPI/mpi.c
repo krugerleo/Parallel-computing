@@ -68,15 +68,15 @@ void print_p_matrix(short *p, int row, int col)
 
 void calc_P_matrix_v1(short *P, char *b, int len_b, char *c, int len_c, int myrank, int chunk_size)
 {
-    char receive_array_for_scatter_c[chunk_size];
-    short receive_array_for_scatter_p[chunk_size * (len_b + 1)];
+    char bufferToReceiveUniqABScatter[chunk_size];
+    short bufferToReceivePmatrix[chunk_size * (len_b + 1)];
     if (myrank == 0)
     {
     }
     // Scatter the char array chunks by sending each process a particular chunk
-    MPI_Scatter(c, chunk_size, MPI_CHAR, &receive_array_for_scatter_c, chunk_size, MPI_CHAR, 0, MPI_COMM_WORLD);
+    MPI_Scatter(c, chunk_size, MPI_CHAR, &bufferToReceiveUniqABScatter, chunk_size, MPI_CHAR, 0, MPI_COMM_WORLD);
     // Scatter the char array chunks by sending each process a particular chunk
-    MPI_Scatter(P, chunk_size * (len_b + 1), MPI_SHORT, &receive_array_for_scatter_p, chunk_size * (len_b + 1), MPI_SHORT, 0, MPI_COMM_WORLD);
+    MPI_Scatter(P, chunk_size * (len_b + 1), MPI_SHORT, &bufferToReceivePmatrix, chunk_size * (len_b + 1), MPI_SHORT, 0, MPI_COMM_WORLD);
     // Broadcast the whole b  array to everybody
     MPI_Bcast(b, len_b, MPI_CHAR, 0, MPI_COMM_WORLD);
 
@@ -84,19 +84,19 @@ void calc_P_matrix_v1(short *P, char *b, int len_b, char *c, int len_c, int myra
     {
         for (int j = 2; j < len_b + 1; j++)
         {
-            if (b[j - 2] == receive_array_for_scatter_c[i]) // j-2 as b we assume here that b has a empty character in the beginning
+            if (b[j - 2] == bufferToReceiveUniqABScatter[i]) // j-2 as b we assume here that b has a empty character in the beginning
             {
-                receive_array_for_scatter_p[(i * (len_b + 1)) + j] = j - 1;
+                bufferToReceivePmatrix[(i * (len_b + 1)) + j] = j - 1;
             }
             else
             {
-                receive_array_for_scatter_p[(i * (len_b + 1)) + j] = receive_array_for_scatter_p[(i * (len_b + 1)) + j - 1];
+                bufferToReceivePmatrix[(i * (len_b + 1)) + j] = bufferToReceivePmatrix[(i * (len_b + 1)) + j - 1];
             }
         }
     }
 
     // now gather all the calculated values of P matrix in process 0
-    MPI_Gather(receive_array_for_scatter_p, chunk_size * (len_b + 1), MPI_SHORT, P, chunk_size * (len_b + 1), MPI_SHORT, 0, MPI_COMM_WORLD);
+    MPI_Gather(bufferToReceivePmatrix, chunk_size * (len_b + 1), MPI_SHORT, P, chunk_size * (len_b + 1), MPI_SHORT, 0, MPI_COMM_WORLD);
 }
 
 int lcs_yang_v1(short **DP, short *P, char *A, char *B, char *C, int m, int n, int u, int myrank, int chunk_size)
