@@ -30,11 +30,12 @@ void calcPMatrix(short *P, char *b, int len_b, char *c, int len_c, int myrank, i
 {
     char bufferToReceiveAlphabet[chunk_size];
     short bufferToReceivePmatrix[chunk_size * (len_b + 1)];
-    // Scatter the char array chunks by sending each process a particular chunk
+    // Send chunk
     MPI_Scatter(c, chunk_size, MPI_CHAR, &bufferToReceiveAlphabet, chunk_size, MPI_CHAR, 0, MPI_COMM_WORLD);
-    // Scatter the char array chunks by sending each process a particular chunk
+    // Send chunk
     MPI_Scatter(P, chunk_size * (len_b + 1), MPI_SHORT, &bufferToReceivePmatrix, chunk_size * (len_b + 1), MPI_SHORT, 0, MPI_COMM_WORLD);
-    // Broadcast the whole b  array to everybody
+    // Broadcast B
+    // max throughput
     MPI_Bcast(b, len_b, MPI_CHAR, 0, MPI_COMM_WORLD);
 
     for (int i = 0; i < chunk_size; i++)
@@ -52,20 +53,21 @@ void calcPMatrix(short *P, char *b, int len_b, char *c, int len_c, int myrank, i
         }
     }
 
-    // now gather all the calculated values of P matrix in process 0
+    // Juntar contrario do scatter
     MPI_Gather(bufferToReceivePmatrix, chunk_size * (len_b + 1), MPI_SHORT, P, chunk_size * (len_b + 1), MPI_SHORT, 0, MPI_COMM_WORLD);
 }
 
 int lcsMPI(short **scoreMatrix, short *P, char *A, char *B, char *C, int m, int n, int u, int myrank, int chunk_size)
 {
 
+    MPI_Bcast(A, m, MPI_CHAR, 0, MPI_COMM_WORLD);
     MPI_Bcast(P, (u * (n + 1)), MPI_SHORT, 0, MPI_COMM_WORLD);
     for (int i = 1; i < m + 1; i++)
     {
         int c_i = get_index_of_character(C, A[i - 1], u);
-        // printf("c_i is %d for %c from %d\n",c_i,A[i-1],myrank);
+
         short scoreMatrix_i_receive[chunk_size];
-        // Broadcast the  whole B  array to everybody
+
         MPI_Scatter(scoreMatrix[i], chunk_size, MPI_SHORT, &scoreMatrix_i_receive, chunk_size, MPI_SHORT, 0, MPI_COMM_WORLD);
         int start_id = (myrank * chunk_size);
         int end_id = (myrank * chunk_size) + chunk_size;
@@ -86,7 +88,7 @@ int lcsMPI(short **scoreMatrix, short *P, char *A, char *B, char *C, int m, int 
                 scoreMatrix_i_receive[j - start_id] = max(scoreMatrix[i - 1][j], scoreMatrix[i - 1][P[(c_i * (n + 1)) + j] - 1] + 1);
             }
         }
-        // now gather all the calculated values of P matrix in process 0
+        // Junta em todos os processos
         MPI_Allgather(scoreMatrix_i_receive, chunk_size, MPI_SHORT, scoreMatrix[i], chunk_size, MPI_SHORT, MPI_COMM_WORLD);
     }
     return scoreMatrix[m - 1][n - 1];

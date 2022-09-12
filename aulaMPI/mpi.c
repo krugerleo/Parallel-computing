@@ -102,6 +102,7 @@ void calc_P_matrix_v1(short *P, char *b, int len_b, char *c, int len_c, int myra
 int lcs_yang_v1(short **DP, short *P, char *A, char *B, char *C, int m, int n, int u, int myrank, int chunk_size)
 {
 
+    MPI_Bcast(A, m, MPI_CHAR, 0, MPI_COMM_WORLD);
     MPI_Bcast(P, (u * (n + 1)), MPI_SHORT, 0, MPI_COMM_WORLD);
     for (int i = 1; i < m + 1; i++)
     {

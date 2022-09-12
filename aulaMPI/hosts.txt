@@ -1,0 +1,2 @@
+# cluster com 4 máquinas e 6 CPUs
+h1 cpu=4
