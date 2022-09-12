@@ -49,108 +49,131 @@ Pela versão 'Row-wise':
 Onde k é o numero de passos necessarios para encontrar uma match como seqA[i] == seqB[j-k] ou j-k == 0, para isso é utilizada outra matriz on calculamos os valores de j-k para toda iteração i, dado por:
 ![j minus k](imagens/mathJminusK.png)
 ```C
-mtype lcs_yang_v1(mtype **DP, mtype **P, char *A, char *B, char *C, int m, int n, int u)
+int lcsMPI(short **scoreMatrix, short *P, char *A, char *B, char *C, int m, int n, int u, int myrank, int chunk_size)
 {
-	{
 
-		for (int i = 1; i < m + 1; i++)
-		{
-			int c_i = get_index_of_character(C, A[i - 1], u);
+    for (int i = 1; i < m + 1; i++)
+    {
+        int c_i = get_index_of_character(C, A[i - 1], u);
 
-#pragma omp parallel for schedule(static)
-			for (int j = 0; j < n + 1; j++)
-			{
-				if (A[i - 1] == B[j - 1])
-				{
-					DP[i][j] = DP[i - 1][j - 1] + 1;
-				}
-				else if (P[c_i][j] == 0)
-				{
-					DP[i][j] = max(DP[i - 1][j], 0);
-				}
-				else
-				{
-					DP[i][j] = max(DP[i - 1][j], DP[i - 1][P[c_i][j] - 1] + 1);
-				}
-			}
-		}
-	}
-	return DP[m][n];
+        short scoreMatrix_i_receive[chunk_size];
+
+        MPI_Scatter(scoreMatrix[i], chunk_size, MPI_SHORT, &scoreMatrix_i_receive, chunk_size, MPI_SHORT, 0, MPI_COMM_WORLD);
+        int start_id = (myrank * chunk_size);
+        int end_id = (myrank * chunk_size) + chunk_size;
+        for (int j = start_id; j < end_id; j++) // if myrank=0 then j=start_id+1 else j=start_id
+        {
+            if (j == start_id && myrank == 0)
+                j = j + 1;
+            if (A[i - 1] == B[j - 1])
+            {
+                scoreMatrix_i_receive[j - start_id] = scoreMatrix[i - 1][j - 1] + 1;
+            }
+            else if (P[(c_i * (n + 1)) + j] == 0)
+            {
+                scoreMatrix_i_receive[j - start_id] = max(scoreMatrix[i - 1][j], 0);
+            }
+            else
+            {
+                scoreMatrix_i_receive[j - start_id] = max(scoreMatrix[i - 1][j], scoreMatrix[i - 1][P[(c_i * (n + 1)) + j] - 1] + 1);
+            }
+        }
+        // Junta em todos os processos
+        MPI_Allgather(scoreMatrix_i_receive, chunk_size, MPI_SHORT, scoreMatrix[i], chunk_size, MPI_SHORT, MPI_COMM_WORLD);
+    }
+    return scoreMatrix[m - 1][n - 1];
 }
 ```
 ```C
-void calc_P_matrix_v1(mtype **P, char *b, int len_b, char *c, int len_c)
+void calcPMatrix(short *P, char *b, int len_b, char *c, int len_c, int myrank, int chunk_size)
 {
-#pragma omp parallel for
-	for (int i = 0; i < len_c; i++)
-	{
-		for (int j = 2; j < len_b + 1; j++)
-		{
-			if (b[j - 2] == c[i]) 
-			{
-				P[i][j] = j - 1;
-			}
-			else
-			{
-				P[i][j] = P[i][j - 1];
-			}
-		}
-	}
+    char bufferToReceiveAlphabet[chunk_size];
+    short bufferToReceivePmatrix[chunk_size * (len_b + 1)];
+    // Send chunk
+    MPI_Scatter(c, chunk_size, MPI_CHAR, &bufferToReceiveAlphabet, chunk_size, MPI_CHAR, 0, MPI_COMM_WORLD);
+    // Send chunk
+    MPI_Scatter(P, chunk_size * (len_b + 1), MPI_SHORT, &bufferToReceivePmatrix, chunk_size * (len_b + 1), MPI_SHORT, 0, MPI_COMM_WORLD);
+    // Broadcast B
+    // max throughput
+    MPI_Bcast(b, len_b, MPI_CHAR, 0, MPI_COMM_WORLD);
+
+    for (int i = 0; i < chunk_size; i++)
+    {
+        for (int j = 2; j < len_b + 1; j++)
+        {
+            if (b[j - 2] == bufferToReceiveAlphabet[i]) // j-2 as b we assume here that b has a empty character in the beginning
+            {
+                bufferToReceivePmatrix[(i * (len_b + 1)) + j] = j - 1;
+            }
+            else
+            {
+                bufferToReceivePmatrix[(i * (len_b + 1)) + j] = bufferToReceivePmatrix[(i * (len_b + 1)) + j - 1];
+            }
+        }
+    }
+
+    // Juntar contrario do scatter
+    MPI_Allgather(bufferToReceivePmatrix, chunk_size * (len_b + 1), MPI_SHORT, P, chunk_size * (len_b + 1), MPI_SHORT, MPI_COMM_WORLD);
 }
 ```
 ## 4. Informações e Metologia de testes
-| Informação           | Descrição                                                                                                   |
-| -------------------- | ----------------------------------------------------------------------------------------------------------- |
-| S.O/kernel           | Ubuntu 5.15.0-43-generic #46~20.04.1-Ubuntu SMP Thu Jul 14 15:20:17 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux |
-| versão do compilador | gcc (Ubuntu 9.4.0-1ubuntu1~20.04.1) 9.4.0                                                                   |
-| Flags de compilação  | -O3 -Wall -pedantic -pthread -fopenmp                                                                       |
-| Processador          | Intel(R) Core(TM) i3-9100F CPU @ 3.60GHz                                                                    |
-| Número de execuções  | 30                                                                                                          |
-| Metodologia          | Teste de escalabilidade                                                                                     |
-| Memoria RAM          | 16GB 3000MHZ                                                                                                |
-| Compilar             | gcc -O3 -Wall -pedantic -pthread -fopenmp parallel.c -o parallel                                            |
-| parametros           | Recebe como entrada o caminho para Sequencia1, Sequencia2 e alphabeto presente                              |
+| Informação           | Descrição                                                                                       |
+| -------------------- | ----------------------------------------------------------------------------------------------- |
+| S.O/kernel cpu1      | Linux cpu1 5.10.0-17-amd64 #1 SMP Debian 5.10.136-1 (2022-08-13) x86_64 GNU/Linux               |
+| S.O/kernel cpu2      | Linux cpu2 5.10.0-16-amd64 #1 SMP Debian 5.10.127-1 (2022-06-30) x86_64 GNU/Linux               |
+| versão do compilador | gcc version 10.2.1 20210110 (Debian 10.2.1-6)                                                   |
+| Flags de compilação  | -O3                                                                                             |
+| Processador          | AMD EPYC 7401 24-Core Processor                                                                 |
+| Número de execuções  | 20                                                                                              |
+| Metodologia          | Teste de escalabilidade                                                                         |
+| Memoria RAM          | 200 GB (Não encontrei a frequência )                                                            |
+| Compilar             | mpicc mpiKruger.c -o kruger                                                                     |
+| parametros           | Recebe como entrada o caminho para Sequencia1, Sequencia2 e alphabeto presente                  |
+| execuções            | mpirun --hostfile hosts.txt -np 2 kruger entradas/fileA.in entradas/fileB.in entradas/uniqAB.in |
 
-#### Arquitetura processador
+#### Arquitetura processadores
 ```
 Arquitetura:                     x86_64
 Modo(s) operacional da CPU:      32-bit, 64-bit
 Ordem dos bytes:                 Little Endian
-Address sizes:                   39 bits physical, 48 bits virtual
-CPU(s):                          4
-Lista de CPU(s) on-line:         0-3
+Tamanhos de endereço:            48 bits physical, 48 bits virtual
+CPU(s):                          32
+Lista de CPU(s) on-line:         0-31
 Thread(s) per núcleo:            1
-Núcleo(s) por soquete:           4
-Soquete(s):                      1
+Núcleo(s) por soquete:           8
+Soquete(s):                      4
 Nó(s) de NUMA:                   1
-ID de fornecedor:                GenuineIntel
-Família da CPU:                  6
-Modelo:                          158
-Nome do modelo:                  Intel(R) Core(TM) i3-9100F CPU @ 3.60GHz
-Step:                            11
-CPU MHz:                         800.112
-CPU MHz máx.:                    4200,0000
-CPU MHz mín.:                    800,0000
-BogoMIPS:                        7200.00
-Virtualização:                   VT-x
-cache de L1d:                    128 KiB
-cache de L1i:                    128 KiB
-cache de L2:                     1 MiB
-cache de L3:                     6 MiB
-CPU(s) de nó0 NUMA:              0-3
+ID de fornecedor:                AuthenticAMD
+Família da CPU:                  23
+Modelo:                          1
+Nome do modelo:                  AMD EPYC 7401 24-Core Processor
+Step:                            2
+CPU MHz:                         1999.995
+BogoMIPS:                        3999.99
+Virtualização:                   AMD-V
+Fabricante do hipervisor:        KVM
+Tipo de virtualização:           completo
+cache de L1d:                    2 MiB
+cache de L1i:                    2 MiB
+cache de L2:                     16 MiB
+cache de L3:                     64 MiB
+CPU(s) de nó0 NUMA:              0-31
+Opções:                          fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm rep_good nopl cpuid extd_apicid 
+                                 tsc_known_freq pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy svm cr8_legacy abm sse4a 
+                                 misalignsse 3dnowprefetch osvw perfctr_core ssbd ibpb vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves clzero xsav
+                                 eerptr virt_ssbd arat npt nrip_save arch_capabilities
 ```
 ## Check List
 Aplicação paralela
 - 1. Está correta? Algumas vezes retorna segfault?
-- Sim, retorna o resultado correto
-Entrada
+- Sim, não retorna segfault, porém além de -np 5 o resultado não está correto
 - 2. Tenho um N que roda em pelo menos 10s?
-- Não, Acima de 80k linhas trava o computador e menos não chega perto de 10s
+- Sim, porém pra valores altos o programa não apresentou consistencia.
 - 3. Tenho tamanhos variados? (2N, 4N, 6N)
-- Sim, 10k, 20k, 30k, 60k
+- Sim, 10k, 20k, 30k, 40k
 Máquina
 - 4. É um servidor virtualizado? Nem pense em rodar na amazon cloud.
-- Não
+- Sim, servidor virtualizado Dinf cpu1,cpu2, na servidora física orval os experimentos possuiam desvios muito grandes.
 - 5. Estou usando modo usuário? Grub.
 - Testes feitos em ambos os ambientes não demonstra variação
 
@@ -158,7 +181,7 @@ Máquina
 ## 5. Resultados
 | Tempo                      | Init Matrix | LCS      |
 | -------------------------- | ----------- | -------- |
-| Serial(1 thread)  60k      | 0,001314    | 3,649211 |
+| Serial(1 thread)  40k      | 0,001314    | 3,649211 |
 | Porcentagem do tempo total | 1%          | 99%      |
 ### Argumento de amdahl
 Tabela de amdahl dada por:
