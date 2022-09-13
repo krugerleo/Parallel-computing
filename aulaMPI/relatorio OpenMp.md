@@ -1,4 +1,4 @@
-# Relatorio Trabalho 1 OpenMP
+# Relatório Trabalho 1 OpenMP
 Aluno: Leonardo Bueno Nogueira Kruger
 GRR20180130
 
@@ -7,7 +7,7 @@ GRR20180130
 Trabalho sobre a paralelização do Algoritmo LCS (Longest Common Subsequence) utilizando OpenMPI, e a variação do método LCS em Row‑wise independent algorithm. O projeto completo com arquivos de entrada e script utilizado na execução dos resultados estão no github do projeto.
 ## 2. Funcionamento Core LCS
 Algoritmo LCS (Longest Common Subsequence)
-Algoritmo utilizado para encontrar a maior subsequencia presente em duas sequencias (Strings), uma subsequencia é caracteriza como uma sequencia que aparece na mesma ordem relativa mas não necessariamente continua.
+Algoritmo utilizado para encontrar a maior subsequencia presente em duas sequencias (Strings), uma subsequencia é caracteriza como uma sequência que aparece na mesma ordem relativa mas não necessariamente continua.
 
 O Algoritmo trabalha em cima de uma matriz de tamanho sizeA x sizeB onde sizeA é o tamanho da string A e sizeB é o tamanho da string B, com a primeira linha e coluna inicializadas em 0.
 ```C
@@ -38,7 +38,7 @@ int LCS(mtype ** scoreMatrix, int sizeA, int sizeB, char * seqA, char *seqB) {
 }
 ```
 ## 3. Estratégia de paralelização
-A partir da estrutura core do LCS foi possivel observar uma dependencia de dados que impossibilitava a paralelização do código, a partir do aritgo [An OpenMP-based tool for finding longest
+A partir da estrutura core do LCS foi possível observar uma dependência de dados que impossibilitava a paralelização do código, a partir do aritgo [An OpenMP-based tool for finding longest
 common subsequence in bioinformatics](https://bmcresnotes.biomedcentral.com/articles/10.1186/s13104-019-4256-6) que propõe soluções sobre problema, decidi por implementar a versão 1 proposta no artigo, Yang et al propõe o 'Row‑wise independent algorithm' uma solução diferente das tradicionais anti-diagonal e bit-parallel e a escolha para o meu trabalho.
 O algoritmo consiste na modificação da equação tradicional do LCS:
 
@@ -48,6 +48,8 @@ Pela versão 'Row-wise':
 ![Row‑wise independent algorithm](imagens/mathRowWise.png)
 Onde k é o numero de passos necessarios para encontrar uma match como seqA[i] == seqB[j-k] ou j-k == 0, para isso é utilizada outra matriz on calculamos os valores de j-k para toda iteração i, dado por:
 ![j minus k](imagens/mathJminusK.png)
+
+A matriz de pontuação é separada em pedaços de acordo com o número de processos e executado o LCS de acordo com calculos demonstrados.
 ```C
 int lcsMPI(short **scoreMatrix, short *P, char *A, char *B, char *C, int m, int n, int u, int myrank, int chunk_size)
 {
@@ -84,6 +86,7 @@ int lcsMPI(short **scoreMatrix, short *P, char *A, char *B, char *C, int m, int 
     return scoreMatrix[m - 1][n - 1];
 }
 ```
+Calculo da matriz P necessaria para remoção da dependência no LCS, a matrix é divida em pedaços para cada processo, os calculos permanecem os mesmos
 ```C
 void calcPMatrix(short *P, char *b, int len_b, char *c, int len_c, int myrank, int chunk_size)
 {
@@ -179,10 +182,11 @@ Máquina
 
 
 ## 5. Resultados
-| Tempo                      | Init Matrix | LCS      |
-| -------------------------- | ----------- | -------- |
-| Serial(1 thread)  40k      | 0,001314    | 3,649211 |
-| Porcentagem do tempo total | 1%          | 99%      |
+### Tabelo de tempo serialXparalelo
+| Tempo                      | Init Matrix Serial | LCS  Paralelo |
+| -------------------------- | ------------------ | ------------- |
+| MPI (NP 1)  40k            | 0.004419           | 4,778764      |
+| Porcentagem do tempo total | 1%                 | 99%           |
 ### Argumento de amdahl
 Tabela de amdahl dada por:
 O argumento de Amdahl é utilizado para prever o máximo speedup teórico usando múltiplos processadores, a partir da porcentagem do programa paralelizavel.
@@ -198,35 +202,46 @@ temos as seguintes formulas, onde podemos obter o T(n) teoricamente e assim calc
 
 No limite, como ‘'N" tende ao infinito, o speedup máximo tende ser 1 / (1 - P).
 ### Tabela Lei de Amdahl
-| Lei de Amdahl | 1   | 2    | 4    | 8    | N   |
-| ------------- | --- | ---- | ---- | ---- | --- |
-| Eficiencia    | 1   | 1,98 | 3,88 | 7,47 | 100 |
+| Lei de Amdahl      | 1   | 2    | 4    | 8    | N   |
+| ------------------ | --- | ---- | ---- | ---- | --- |
+| Eficiencia Teorica | 1   | 1,98 | 3,88 | 7,47 | 100 |
 
 
-Resultados das execuções Seriais e Paralelas
-Cada algoritmo foi executado pelo menos 30 vezes com as entradas dos tamanho descritos para coleta de dados e amostragem.
+Resultados das execuções
+Cada algoritmo foi executado pelo menos 20 vezes com as entradas dos tamanho descritos para coleta de dados e amostragem.
 ### Tabela Resultados
-| em segs       | Serial   | 1 Thread | 2 Thread | 4 Thread | 8 Thread |
-| ------------- | -------- | -------- | -------- | -------- | -------- |
-| Média 10k:    | 0,17669  | 0,16903  | 0,09683  | 0,070976 | 0,071005 |
-| Desv Pad 10k: | 0,00188  | 0,00275  | 0,00509  | 0,02414  | 0,02307  |
-| Média 20k:    | 0,700294 | 0,650065 | 0,355678 | 0,207929 | 0,208012 |
-| Desv Pad 20k: | 0,00453  | 0,00914  | 0,00535  | 0,04439  | 0,04318  |
-| Média 30k:    | 1,594543 | 1,44017  | 0,777968 | 0,521799 | 0,519987 |
-| Desv Pad 30k: | 0,00935  | 0,01746  | 0,01501  | 0,18416  | 0,18115  |
-| Média 60k     | 6,353989 | 6,32141  |          | 1,601886 | 1,602086 |
-| Desv Pad 60k  | 0,034371 | 0,01919  |          | 0,050562 | 0,049892 |
-
+|                    | np 1     | np 2     | np 4     |
+| ------------------ | -------- | -------- | -------- |
+| Média em segs 10k: | 0,312181 | 0,420474 | 0,589554 |
+| Desv Pad 10k:      | 0,0018   | 0,0109   | 0,0617   |
+| Ḿédia/DesvPad:     | 0,0057   | 0,0259   | 0,1047   |
+| Média em segs 20k: | 1,239316 | 1,407992 | 1,878533 |
+| Desv Pad 20k:      | 0,0066   | 0,0491   | 0,2218   |
+| Ḿédia/DesvPad:     | 0,0054   | 0,0349   | 0,1181   |
+| Média em segs 30k: | 2,779283 | 2,976406 | 3,547244 |
+| Desv Pad 30k:      | 0,0149   | 0,0980   | 0,3466   |
+| Ḿédia/DesvPad:     | 0,0053   | 0,0329   | 0,0977   |
+| Média em segs 40k: | 4,956067 | 5,074711 | 5,513934 |
+| Desv Pad 40k:      | 0,0360   | 0,3071   | 0,4992   |
+| Ḿédia/DesvPad:     | 0,0073   | 0,0605   | 0,0905   |
 ### Tabela Speedup
-|            | Tempo Serial  -> | 1 Speedup -> | 2 Speedup | 4 Speedup |
-| ---------- | ---------------- | ------------ | --------- | --------- |
-| Média 10k: | 0,17669          | 1,045        | 1,74      | 2,38      |
-| Média 20k: | 0,700294         | 1,077        | 1,82      | 3,12      |
-| Média 30k: | 1,594543         | 1,107        | 1,85      | 2,76      |
-| Média 60k  | 6.353989         | 1,005        | ---       | 3,94      |
+| procs      | 1 -> | 2 ->  | 4     |
+| ---------- | ---- | ----- | ----- |
+| Média 10k: | 1    | 0,742 | 0,530 |
+| Média 20k: | 1    | 0,880 | 0,660 |
+| Média 30k: | 1    | 0,934 | 0,784 |
+| Média 40k  | 1    | 0,977 | 0,899 |
+### Tabela Eficiência
+| Eficiência | 1   | 2    | 4    |
+| ---------- | --- | ---- | ---- |
+| 10k        | 1   | 0,37 | 0,13 |
+| 20k        | 1   | 0,44 | 0,16 |
+| 30k        | 1   | 0,47 | 0,20 |
+| 40k        | 1   | 0,49 | 0,22 |
 ## 6. Conclusão
-Os resultados dos testes foram satisfatorios, o desvio padrão baixo mostrou que houve poucas interrupções/variações nos tempos de execução dos testes com mesmas variaveis, comparando os resultados da tabela prática de Speedup e a tabela teorica do Argumento de Amdahl demonstra uma relação forte entre os resultados previstos e obtido, provando que a porcentagem de código paralelizavel previsto foi atingido.
+Os resultados dos testes **não** satisfazem a expectativa de uma execução paralela mais rápida, comparando os resultados da tabela prática e da teórica demonstra uma grande discrepância dos valores. Possibilidades para o problema seria o custo da comunicação para o tamanho das amostras e má implementação do código.
 
-O algoritmo apresentou escalabilidade forte, tendo em vista que o Speedup atingiu os valores mais proximos ao argumento de Amdahl com maiores entradas de dados, o código não chegou a atingir execuções de 10's ou mais pois a partir de 80k ocorria o travamento da máquina, para melhores equipamentos pode se tornar mais escalavel ainda.
+Os testes mostraram o código implementado como funcional até 40K entradas e número de processos até 5, devido a essa limitação foi difícil a execução de mais testes de escalabilidade, os resultados demonstram uma melhoria de desempenho para entradas maiores, porém considero presunçoso afirmar escalabilidade fraca do código, mais testes e melhorias são necessários.
 
-Os resultados obtidos na perspectiva geral foram ótimos, ocorreu uma pequena variação negativa no Speedup de 4 Threads entre 20k -> 30k porém todos os outros resultados são positivos, o valor de score bateu com o esperado da execução serial em todos os casos mostrando também a corretude do algoritmo.
+Comparado ao experimento anterior, o código não apresentou melhorias na versão paralela, porém foi possível a execução de testes mais precisos, com desvio padrão menores mesmo em servidor virtualizado do DINF baixando de 30% para no maior dos casos 11%.
+
