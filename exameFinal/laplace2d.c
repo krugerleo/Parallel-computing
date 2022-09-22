@@ -1,5 +1,5 @@
 #define NPES 4
-#define NC 5000       /* Number of Cols        sk*/
+#define NC 5000       /* Number of Cols        */
 #define NR 5000       /* Number of Rows        */
 #define NRL NR / NPES /* Number of Rows per PE */
 #define DOWN 100      /* Tag for messages down */
@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include "mpi.h"
+#include <time.h>
 
 void initialize(float **t);
 void set_bcs(float **t, int mype, int npes);
@@ -30,11 +30,7 @@ int main(int argc, char **argv)
 
     int i, j, iter;
 
-    int my_rank;
-    int num_procs;
-    MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);   // grab this process's rank
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs); // grab the total num of processes
+    clock_t begin = clock();
 
     t = calloc(NR, sizeof(float *));
     t[0] = calloc(NR * NC, sizeof(float));
@@ -58,31 +54,29 @@ int main(int argc, char **argv)
     /* Do Computation on Sub-grid for Niter iterations */
     /*-------------------------------------------------*/
 
-    niter = 1000; // executa 10x
-    int chunk_size = NRL / num_procs;
-    int start_index = chunk_size * my_rank + 1;
-    int finish_index = chunk_size * (my_rank + 1);
+    niter = 1000;
 
     for (iter = 1; iter <= niter; iter++)
     {
-        for (i = start_index; i <= finish_index; i++)
-            for (j = 1; j <= NC; j++)
-                t[i][j] = 0.25 * (told[i + 1][j] + told[i - 1][j] + told[i][j + 1] + told[i][j - 1]);
 
+        for (i = 1; i <= NRL; i++)
+            for (j = 1; j <= NC; j++)
+                t[i][j] = 0.25 * (told[i + 1][j] + told[i - 1][j] +
+                                  told[i][j + 1] + told[i][j - 1]);
         dt = 0.;
 
-        for (i = start_index; i <= finish_index; i++) /* Copy for next iteration  */
+        for (i = 1; i <= NRL; i++) /* Copy for next iteration  */
             for (j = 1; j <= NC; j++)
             {
                 dt = MAX(abs(t[i][j] - told[i][j]), dt);
                 told[i][j] = t[i][j];
             }
-        MPI_Allgather(told[0], chunk_size, MPI_FLOAT, told[0], chunk_size, MPI_FLOAT, MPI_COMM_WORLD);
+
         /*------------------------*/
         /* Print some test values */
         /*------------------------*/
 
-        if ((iter % 100) == 0 && my_rank == 0)
+        if ((iter % 100) == 0)
         {
             if (mype == 0)
                 printf("Iter = %4d: PE = %d: t[10][10] = %20.8f\n",
@@ -90,7 +84,10 @@ int main(int argc, char **argv)
         }
 
     } /* End of iteration */
-    MPI_Finalize();
+    clock_t end = clock();
+    double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+    printf("%f", time_spent);
+
 } /* End of Program */
 
 /*-----------------------------------------------------*/

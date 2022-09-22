@@ -35,6 +35,7 @@ int main(int argc, char **argv)
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);   // grab this process's rank
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs); // grab the total num of processes
+    double start_time, stop_time;
 
     t = calloc(NR, sizeof(float *));
     t[0] = calloc(NR * NC, sizeof(float));
@@ -58,36 +59,43 @@ int main(int argc, char **argv)
     /* Do Computation on Sub-grid for Niter iterations */
     /*-------------------------------------------------*/
 
+    start_time = MPI_Wtime();
     niter = 1000; // executa 10x
     int chunk_size = NRL / num_procs;
     int start_index = chunk_size * my_rank + 1;
     int finish_index = chunk_size * (my_rank + 1);
-    float matrixTold[chunk_size];
+
+    if (my_rank == num_procs - 1)
+    {
+        finish_index = NRL;
+    }
+
+    // if (my_rank == 0)
+    // {
+    //     printf("%d;", NC);
+    //     start_time = MPI_Wtime();
+    // }
 
     for (iter = 1; iter <= niter; iter++)
     {
-
-        MPI_Scatter(told[0], chunk_size, MPI_FLOAT, &matrixTold, chunk_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
-
-        for (i = 1; i <= chunk_size; i++)
+        for (i = start_index; i <= finish_index; i++)
             for (j = 1; j <= NC; j++)
                 t[i][j] = 0.25 * (told[i + 1][j] + told[i - 1][j] + told[i][j + 1] + told[i][j - 1]);
 
         dt = 0.;
 
-        for (i = 1; i <= chunk_size; i++) /* Copy for next iteration  */
+        for (i = start_index; i <= finish_index; i++) /* Copy for next iteration  */
             for (j = 1; j <= NC; j++)
             {
                 dt = MAX(abs(t[i][j] - told[i][j]), dt);
                 told[i][j] = t[i][j];
             }
-
-        MPI_Gather(told[0], chunk_size, MPI_FLOAT, &matrixTold, chunk_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
+        MPI_Allgather(told[0], chunk_size, MPI_FLOAT, told[0], chunk_size, MPI_FLOAT, MPI_COMM_WORLD);
         /*------------------------*/
         /* Print some test values */
         /*------------------------*/
-        printf("ITEER");
-        if ((iter % 100) == 0)
+
+        if ((iter % 100) == 0 && my_rank == 0)
         {
             if (mype == 0)
                 printf("Iter = %4d: PE = %d: t[10][10] = %20.8f\n",
@@ -95,6 +103,11 @@ int main(int argc, char **argv)
         }
 
     } /* End of iteration */
+    // if (my_rank == 0)
+    // {
+    //     stop_time = MPI_Wtime();
+    //     printf("%f;", stop_time - start_time);
+    // }
     MPI_Finalize();
 } /* End of Program */
 
